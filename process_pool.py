@@ -82,7 +82,7 @@ def switch_level(level, pool_1, pool_2, pool_3, process):
 # begin_time = get_now_str()
 # current_time = 0
 # 创建20个进程并加入进程池
-i = 20
+i = 5
 while i > 0:
 # while 1:
     sleep = random.randint(1, 5)  # 随机等待一段时间

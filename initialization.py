@@ -14,9 +14,9 @@ def update_cluster(cluster):
 
 
 def main():
-    cluster_1 = [20, 20]
-    cluster_2 = [20, 20]
-    cluster_3 = [20, 20]
+    cluster_1 = [100, 100]
+    cluster_2 = [100, 100]
+    cluster_3 = [100, 100]
     cluster = [cluster_1, cluster_2, cluster_3]
     pool_lock = ["pool_1_lock.txt", "pool_2_lock.txt", "pool_3_lock.txt"]
     cluster_lock = ["cluster_1_lock.txt", "cluster_2_lock.txt", "cluster_3_lock.txt"]

@@ -1,4 +1,3 @@
-# 将从txt文本中读取的字符串转变为列表
 import time
 from time_model import get_now_str
 from lock import file_lock, file_unlock, check_lock
