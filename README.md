@@ -20,3 +20,34 @@
 
 添加了启发式算法（蚁群算法）
 具体细节见ACO类
+
+###### 2021/12/21 进展
+
+修改了几个算法的bug，简单做下来在资源充足和资源不充足情况下各类算法性能的展示
+
+资源充足情况下：
+![image](https://user-images.githubusercontent.com/60082323/146951973-6cdce9bb-3c42-4292-8fed-349c578069db.png)
+![image](https://user-images.githubusercontent.com/60082323/146952051-c2949642-9096-4a81-93db-5af990d5336d.png)
+![image](https://user-images.githubusercontent.com/60082323/146952081-7d9268b7-7b72-4dc9-bdfc-062d0399a4a1.png)
+![image](https://user-images.githubusercontent.com/60082323/146952096-cbe1d339-55ff-4e9e-8a73-d8a62ac069cc.png)
+通过方差计算各类算法的资源均衡度
+
+随机算法：CPU：4.9；MEM：5.7
+
+贪心算法：CPU：2.7；MEM：2.3
+
+预测算法：CPU: 2.5; MEM: 2.5
+
+蚁群算法：CPU: 2.0；MEM：1.9
+
+资源不充足情况下通过平均周转时间和吞吐量评估各类算法：
+
+随机算法：31.7		      75/min
+
+贪心算法：33.8			      71/min
+
+改进的贪心算法：31.2		      73/min
+
+预测算法：32.8			       72/min
+
+蚁群算法：29.7			       81/min
