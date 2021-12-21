@@ -1,5 +1,4 @@
 import os.path
-
 from time_model import get_now_str, get_time_bystr, get_timedelta_bystr, get_time_finish
 import time
 from lock import file_lock, file_unlock, check_lock

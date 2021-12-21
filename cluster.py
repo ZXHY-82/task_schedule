@@ -168,6 +168,7 @@ def random_schedule():
 # 贪心调度  每个结点得分是根据CPU和MEM两个得分点而来的，可能需要对CPU/MEM这个比例系数进行相关操作
 def greed_schedule():
     flag = [0, 0, 0]
+    flag_1 = [0, 0, 0]
     rs_a = [0, 0]
     rs = []
     result = -1
@@ -177,7 +178,7 @@ def greed_schedule():
         while check_lock(pool[i], pool_lock[i]):
             time.sleep(0.05)
         file_lock(pool[i], pool_lock[i])
-
+        print(i)
         f = open(pool[i], 'r')
         if os.path.getsize(pool[i]) != 0:
             get_line = f.readline()
@@ -221,13 +222,188 @@ def greed_schedule():
                     temp_r[k] += pow((rs[k][1] - rs_a[1]), 2)
                 else:
                     temp_r[k] -= pow((rs[k][1] - rs_a[1]), 2)
-            print(temp_r)
+
+            # 计算指标的平均值
+            sum_c = 0
+            count = 0
+            for ii in range(3):
+                if flag[ii] == 0:
+                    sum_c += temp_r[ii]
+                    count += 1
+            ave = sum_c/count
+            count_1 = 0
+            for iii in range(3):
+                if abs(temp_r[iii] - ave) < 4:    # 均衡相差不大的节点
+                    flag_1[iii] = 1
+                    count_1 += 1
+            if count_1 > 1:
+                flag_2 = 0
+                w = temp[2]/temp[3]
+                if (temp[2] - temp[3]) > 0:  # 如果任务所需CPU大于MEM
+                    flag_2 = 1
+                else:
+                    flag_2 = -1
+                for iiii in range(3):
+                    if flag_1 == 1:
+                        temp_r[iiii] += flag_2 * (rs[iiii][0] - rs[iiii][1]) * w
+
+            # print(temp_r)
             f = 0
+            f_s = temp_r[0]
+            for kk in range(2):
+                if temp_r[kk+1] > f_s:
+                    f_s = temp_r[kk+1]
+                    f = (kk+1)
+            temp[6] = get_now_str()
+            temp[8] = f
+            """更新集群结点资源数"""
+            c[f][0] -= temp[2]
+            c[f][1] -= temp[3]
+            # update_cluster(c, f_c)
+            f_c.seek(0, 0)            # 指针指向文件起始
+            f_c.truncate()            # 从指针处开始全部删除
+            for line in c:
+                f_c.write(str(line) + '|')
+            f_c.close()
+            """unlock cluster.txt"""
+            file_unlock("cluster.txt", "cluster_lock.txt")
+            """删除在进程池文件中的数据"""
+            """lock pool_i.txt"""
+            while check_lock(pool[i], pool_lock[i]):
+                time.sleep(0.05)
+            file_lock(pool[i], pool_lock[i])
+
+            f_new = open(pool[i], 'r+')
+            get_all_lines = f_new.readlines()
+            f_new.seek(0, 0)             # 指针指向文件开始
+            f_new.truncate()             # 全部删除
+            for line in get_all_lines:
+                if get_line == line:
+                    continue
+                f_new.write(line)
+            f_new.close()
+            """unlock pool_i.txt"""
+            file_unlock(pool[i], pool_lock[i])
+            """"在结点文件添加数据"""
+            """lock cluster_k.txt"""
+            while check_lock(cluster_txt[f], cluster_lock[f]):
+                time.sleep(0.05)
+            file_lock(cluster_txt[f], cluster_lock[f])
+
+            f_w = open(cluster_txt[f], 'a')  # 打开结点文件进行添加
+            for line in temp:
+                f_w.write(str(line) + ' ')
+            f_w.write('\n')
+            f_w.close()  # 关闭集群文件
+            """unlock cluster_k.txt"""
+            file_unlock(cluster_txt[f], cluster_lock[f])
+
+            print("将任务" + str(temp[0]) + "调度到结点" + str(f) + "成功！")
+            break  # 退出  一次只调度一个任务
+        file_unlock(pool[i], pool_lock[i])
+
+
+def greed_schedule_2():
+    flag = [0, 0, 0]
+    flag_1 = [0, 0, 0]
+    rs_a = [0, 0]
+    rs = []
+    result = -1
+    k = 0
+    for i in range(3):
+        """lock  pool_i.txt"""
+        while check_lock(pool[i], pool_lock[i]):
+            time.sleep(0.05)
+        file_lock(pool[i], pool_lock[i])
+
+        f = open(pool[i], 'r')
+        if os.path.getsize(pool[i]) != 0:
+            get_line = f.readline()
+            f.close()                           # 关闭进程池文件
+            """unlock pool_i.txt"""
+            file_unlock(pool[i], pool_lock[i])
+
+            temp = str_to_list(get_line)  # 字符串转列表
+            """lock cluster.txt"""
+            while check_lock("cluster.txt", "cluster_lock.txt"):
+                time.sleep(0.05)
+            file_lock("cluster.txt", "cluster_lock.txt")
+
+            f_c = open("cluster.txt", 'r+')         # 读取集群资源
+            r = f_c.readline()
+            # print(r)
+            # print(str_to_list_cluster(r))
+            c = str_to_list_cluster(r)
+            for j in range(3):
+                if (c[j][0] < temp[2]) | (c[j][1] < temp[3]):
+                    # rs.append([0, 0])
+                    flag[j] = 1
+                #else:
+                    #rs.append(c[j])
+                    # rs_a[0] += c[j][0]
+                    # rs_a[1] += c[j][1]
+                    # k += 1
+            if (flag[0] == 1) & (flag[1] == 1) & (flag[2] == 1):
+                print("error:调度任务"+str(temp[0])+"失败所有结点资源均不足！")
+                """unlock cluster.txt"""
+                file_unlock("cluster.txt", "cluster_lock.txt")
+                break
+            # rs_a = [rs_a[0]/k, rs_a[1]/k]   # 求平均
+            temp_r = [0, 0, 0]
+            """
+            for k in range(3):
+                if rs[k][0] > rs_a[0]:
+                    temp_r[k] += pow((rs[k][0] - rs_a[0]), 2)
+                else:
+                    temp_r[k] -= pow((rs[k][0] - rs_a[0]), 2)
+                if rs[k][1] > rs_a[1]:
+                    temp_r[k] += pow((rs[k][1] - rs_a[1]), 2)
+                else:
+                    temp_r[k] -= pow((rs[k][1] - rs_a[1]), 2)
+            
+            sum = 0
+            count = 0
+            for i in range(3):
+                if flag[i] == 0:
+                    sum += temp_r[i]
+                    count += 1
+            ave = sum/count
+            count_1 =0
+            for i in range(3):
+                if abs(temp_r[i] - ave) < 4:    # 均衡相差不大的节点
+                    flag_1[i] = 1
+                    count_1 += 1
+            if count_1 > 1:
+                flag_2 = 0
+                w = temp[2]/temp[3]
+                if (temp[2] - temp[3]) > 0:  # 如果任务所需CPU大于MEM
+                    flag_2 = 1
+                else:
+                    flag_2 = -1
+                for i in range(3):
+                    if flag_1 == 1:
+                        temp_r[i] += flag_2 * (rs[i][0] - rs[i][1]) * w
+            """
+            diff = temp[2] - temp[3]
+            diff_c = [c[0][0] - c[0][1], c[1][0] - c[1][1], c[2][0] - c[2][1]]
+
+            # f = 0
+            diff = 0 - diff
+            for ii in range(3):
+                if flag[ii] != 1:
+                    diff_c[ii] = diff_c[ii] * diff
+                else:
+                    diff_c[ii] = 0x3f3f3f
+            print(diff)
+            print(diff_c)
+            f = np.argmin(diff_c)
+            # print(temp_r)
+            """f = 0
             f_s = temp_r[0]
             for k in range(2):
                 if temp_r[k+1] > f_s:
                     f_s = temp_r[k+1]
-                    f = (k+1)
+                    f = (k+1)"""
             temp[6] = get_now_str()
             temp[8] = f
             """更新集群结点资源数"""
@@ -283,6 +459,7 @@ def contention_rate(file):
     finish_time = []
     c_rate = 0
     f = open(file, 'r')
+    # print(f.readlines())
     if os.path.getsize(file) == 0:
         return c_rate
     else:
@@ -292,7 +469,8 @@ def contention_rate(file):
             temp.append(a)
         now_time = get_now_str()
         for i in range(len(temp)):    # 每个进程的剩余完成时间
-            b =  get_timedelta_bystr(temp[i][6], now_time)
+            b = get_timedelta_bystr(temp[i][6], now_time)
+            b = temp[i][5] - b
             if b <= 0:
                 finish_time.append(0)
             else:
@@ -302,7 +480,7 @@ def contention_rate(file):
         while k <= max_time:          # 计算每个时间点存在的任务数
             for i in range(len(finish_time)):
                 if finish_time[i] >= k:
-                    # c_rate = c_rate + 1 不考虑负载均衡
+                    # c_rate = c_rate + 1  # 不考虑负载均衡
                     c_rate = c_rate + temp[i][2] + temp[i][3]  # 考虑负载均衡
             k += 1
         return c_rate
@@ -333,6 +511,7 @@ def predict_schedule():
 
             f_c = open("cluster.txt", 'r+')  # 读取集群资源
             r = f_c.readline()
+            print(r)
             # print(r)
             # print(str_to_list_cluster(r))
             c = str_to_list_cluster(r)
@@ -357,6 +536,7 @@ def predict_schedule():
                 """unlock cluster.txt"""
                 file_unlock("cluster.txt", "cluster_lock.txt")
                 break
+            print(c_rate)
             k = c_rate.index(min(c_rate))  # 获取最小争用率的结点
 
             temp[6] = get_now_str()  # 修改运行时间
@@ -409,7 +589,7 @@ def predict_schedule():
 
 
 class ACO(object):
-    def __init__(self, tasks, cluster, ants_num=10, times=100):
+    def __init__(self, tasks, cluster, ants_num=10, times=50):
         self.CPU_MAX = 100
         self.MEM_MAX = 100
         self.tasks = tasks
@@ -435,7 +615,10 @@ class ACO(object):
 
     # p是为任务i选择节点j的概率列表。 例如：[0.2, 0.3, 0.5] 采用轮盘赌的策略进行选择
     def select_i_j(self, p):
+        if p == [0,0,0]:
+            return -1
         x = random.uniform(0, 1)
+        print(x)
         if x < p[0]:
             return 0
         elif x - p[0] < p[1]:
@@ -454,11 +637,16 @@ class ACO(object):
             else:
                 c = self.food[i][0] / self.CPU_MAX
                 m = self.food[i][1] / self.MEM_MAX
+                # print(c,m)
                 # self.hf_i_j = (c + m) / 2 + (1 - abs(c - m))
                 self.hf_i_j = (c + m) + (1 - abs(c - m))
+                # print(self.hf_i_j)
                 temp.append((pow(self.pheromone[i], self.ihj)) * pow(self.hf_i_j, self.ehj))
+        # print(flag)
+        # print(temp)
         for k in range(self.cluster_num):
-            temp_sum += temp[k]
+            if flag[k] != 0:
+                temp_sum += temp[k]
         for j in range(self.cluster_num):
             if flag[j] == 0:
                 p.append(0)
@@ -466,7 +654,7 @@ class ACO(object):
                 p.append(temp[j] / temp_sum)
         return p
 
-    # 生成解向量  """未考虑资源不足情况"""
+    # 生成解向量
     def solution_vector(self):
         # 初始化食物素
         self.food = [[self.cluster[0][0], self.cluster[0][1]],
@@ -476,16 +664,22 @@ class ACO(object):
         solution = [-1 for _ in range(self.tasks_num)]  # 初始化解向量
         for i in range(self.tasks_num):
             for j in range(self.cluster_num):
-                if (self.tasks[i][2] < self.food[j][0]) | (self.tasks[i][3] < self.food[j][1]):
+                if (self.tasks[i][2] < self.food[j][0]) & (self.tasks[i][3] < self.food[j][1]):
                     flag[j] = 1
             if flag == [0, 0, 0]:
                 break
             p = self.calculate_p(flag)  # 计算概率
+            print(p)
             point = self.select_i_j(p)  # 选择节点
+            print(point)
             solution[i] = point
             # 更新食物素
             self.food[point][0] -= self.tasks[i][2]
             self.food[point][1] -= self.tasks[i][3]
+            print(flag)
+            print(self.food)
+            flag = [0, 0, 0]
+        print(solution)
         return solution
 
     # 评估解向量   根据异构资源间的均衡和异构资源内的均衡
@@ -580,12 +774,13 @@ def aco_schedule():
         pool_2 = []
         pool_3 = []
         pool_all = [pool_1, pool_2, pool_3]
+        # print(ac.best_schedule)
         for k in range(len(ac.best_schedule)):
             point = ac.best_schedule[k]
             if point != -1:           # 调度成功的任务
                 c[point][0] -= tasks[k][2]
                 c[point][1] -= tasks[k][3]
-                #a = tasks[k]
+                # a = tasks[k]
                 pool_all[tasks[k][1]-1].append(tasks[k])
                 # print(pool_all[point])
                 # print(tasks[k])
@@ -654,12 +849,28 @@ def aco_schedule():
 
 def main():
     while 1:
-        time.sleep(3)
-        # random_schedule()
-        # greed_schedule()
-        # predict_schedule()
-        aco_schedule()
-        # print("1111")
+        time.sleep(1)
+
+        count = 0
+        for i in range(3):
+            while check_lock(pool[i], pool_lock[i]):
+                time.sleep(0.05)
+            file_lock(pool[i], pool_lock[i])
+            f = open(pool[i], 'r')
+            lines = f.readlines()
+            for k in lines:
+                count += 1
+            f.close()
+            file_unlock(pool[i], pool_lock[i])
+        # for j in range(count):
+        while count>0:
+            # random_schedule()
+            # greed_schedule()
+            greed_schedule_2()
+            # predict_schedule()
+            count -= 1
+
+        # aco_schedule()
 
 
 if __name__ == '__main__':

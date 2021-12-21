@@ -21,6 +21,7 @@ def get_timedelta_bystr(time1, time2):
     return (get_time_bystr(time2) - get_time_bystr(time1)).seconds
 
 
+# 获得结束时间
 def get_time_finish(time1, seconds):
     a = (get_time_bystr(time1) + datetime.timedelta(seconds=seconds))
     a = a.strftime(format)
